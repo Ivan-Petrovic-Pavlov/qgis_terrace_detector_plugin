@@ -91,6 +91,7 @@ qgis_terrace_detector_plugin/
 - **`INSTALACIA.md`** – používateľská príručka opisujúca postup inštalácie a konfigurácie pluginu v prostredí QGIS.
 - **`VYVOJARI.md`** – technická dokumentácia určená vývojárom. Opisuje architektúru pluginu, rozhranie evaluátora, konfiguráciu modelov a tvorbu vlastných modelových balíkov.
 
+---
 
 - **`terasy_eval/`** – the main source code of the QGIS plugin. It contains the implementation of tools for detecting and evaluating archaeological terraces.
   - **`algorithms/`** – implementation of algorithms available through the QGIS Processing Toolbox.
@@ -103,7 +104,7 @@ qgis_terrace_detector_plugin/
   - `EffB3 VIS_ISO ensemble with post-processing.zip` – an ensemble model with post-processing applied to the detections.
   - `EffB3 VIS_ISO ensemble without post-processing.zip` – an ensemble model without post-processing.
 - **`examples/`** – example model bundles intended to demonstrate and test the plugin's functionality.
-- **`models/`** – contains example model bundles, such as `fpn_resnet34_dem.zip`, which uses an FPN architecture with a ResNet34 backbone for DEM data.
+ - **`models/`** – contains example model bundles, such as `fpn_resnet34_dem.zip`, which uses an FPN architecture with a ResNet34 backbone for DEM data.
 - **`tests/`** – automated tests designed to verify the correctness of individual plugin components, model configurations, evaluator loading, and related functionality.
 - **`create_model_bundle.py`** – a utility script for creating model ZIP bundles containing the configuration, model weights, and required components for running inference.
 - **`README.md`** – the main project documentation, providing an overview of the plugin's functionality and basic usage information.
