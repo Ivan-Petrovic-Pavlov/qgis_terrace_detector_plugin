@@ -48,6 +48,15 @@ def validate_model_config(config):
         filename = config.get(key)
         if not isinstance(filename, str) or not filename or os.path.basename(filename) != filename:
             raise ValueError(f"Neplatný názov súboru '{key}' v konfigurácii / Invalid '{key}' filename.")
+    additional_checkpoints = config.get("additional_checkpoints", [])
+    if not isinstance(additional_checkpoints, list) or any(
+        not isinstance(filename, str) or not filename or os.path.basename(filename) != filename
+        for filename in additional_checkpoints
+    ):
+        raise ValueError("Neplatný zoznam doplnkových checkpointov / Invalid additional checkpoint list.")
+    checkpoint_names = [config["checkpoint"], *additional_checkpoints]
+    if len(set(checkpoint_names)) != len(checkpoint_names) or config["inference_script"] in checkpoint_names:
+        raise ValueError("Názvy súborov v balíku sa nesmú opakovať / Bundle filenames must be unique.")
 
     return config
 
@@ -58,7 +67,12 @@ def read_model_bundle(bundle_path):
             config = json.loads(bundle.read("config.json").decode("utf-8"))
             validate_model_config(config)
             names = set(bundle.namelist())
-            for required_file in (config["checkpoint"], config["inference_script"]):
+            required_files = [
+                config["checkpoint"],
+                *config.get("additional_checkpoints", []),
+                config["inference_script"],
+            ]
+            for required_file in required_files:
                 if required_file not in names:
                     raise ValueError(f"V ZIP balíku chýba {required_file} / Missing {required_file} in model ZIP.")
     except (OSError, KeyError, UnicodeDecodeError, json.JSONDecodeError, zipfile.BadZipFile) as exc:
@@ -69,7 +83,12 @@ def read_model_bundle(bundle_path):
 def extract_model_bundle(bundle_path, destination):
     config = read_model_bundle(bundle_path)
     with zipfile.ZipFile(bundle_path) as bundle:
-        for filename in (config["checkpoint"], config["inference_script"]):
+        filenames = [
+            config["checkpoint"],
+            *config.get("additional_checkpoints", []),
+            config["inference_script"],
+        ]
+        for filename in filenames:
             destination_path = os.path.join(destination, filename)
             with bundle.open(filename) as source, open(destination_path, "wb") as target:
                 shutil.copyfileobj(source, target)

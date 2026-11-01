@@ -230,6 +230,17 @@ class InferenciaTerasyAlgorithm(QgsProcessingAlgorithm):
             output = None
             source = None
 
+        postprocess_mask = getattr(runner, "postprocess_mask", None)
+        if callable(postprocess_mask):
+            feedback.pushInfo("SK / EN: Upravujem masku podľa filtra balíka / Applying bundle mask filter")
+            try:
+                postprocess_mask(model_config, source_path, output_path, feedback)
+            except Exception as exc:
+                raise QgsProcessingException(
+                    f"SK: Dodatočná úprava masky zlyhala: {exc} / "
+                    f"EN: Bundle post-processing failed: {exc}"
+                ) from exc
+
         if feedback.isCanceled():
             raise QgsProcessingException(
                 "SK: Výpočet bol zrušený; výstup môže byť neúplný. / "
