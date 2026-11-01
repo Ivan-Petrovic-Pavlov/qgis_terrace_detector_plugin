@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.vscode/
+.DS_Store
+*.gpkg-shm
+*.gpkg-wal
+*.aux.xml
+
+# Model weights are shipped inside the versioned model ZIP bundle.
+/examples/models/*.pth
+
+# Keep the release ZIP even when the parent repository ignores archives.
+!/examples/models/*.zip

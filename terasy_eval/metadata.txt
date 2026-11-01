@@ -1,0 +1,8 @@
+[general]
+name=Detekcia terás / Terrace detection
+description=Vyhľadávanie a vyhodnotenie archeologických terás / Archaeological terrace search and evaluation
+version=1.0.0
+qgisMinimumVersion=3.20
+author=Terrace detection project
+email=
+category=Analysis

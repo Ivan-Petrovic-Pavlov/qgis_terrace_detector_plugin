@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "name": "FPN ResNet34 DEM terraces, 5 px mask / FPN ResNet34 DEM terasy, maska 5 px",
+  "checkpoint": "model.pth",
+  "inference_script": "model_runner.py",
+  "model": {
+    "architecture": "FPN",
+    "encoder": "resnet34"
+  },
+  "input": {
+    "type": "dem",
+    "channels": 1,
+    "bands": [1],
+    "description": "Elevation raster (DEM), one band / Výškový raster (DEM), jedno pásmo",
+    "preprocessing": "dem_per_patch",
+    "preprocessing_options": {
+      "scale_m": 5.0
+    }
+  },
+  "inference": {
+    "threshold": 0.2,
+    "patch_size": 256,
+    "stride": 128,
+    "batch_size": 8
+  },
+  "training": {
+    "mask_width_px": 5,
+    "epochs": 50,
+    "seed": 42,
+    "training_sites": [
+      "Hradisko_Sitno",
+      "Hradisko_Sasovske_Podhradie",
+      "Hradisko_Ladzany"
+    ],
+    "selection_metric": "Leave-one-site-out mean balanced accuracy across 3 seeds / Priemer vyváženej presnosti pri validácii s vynechanou lokalitou, 3 seedy",
+    "selection_score": 0.8252,
+    "tribec_point_hit_within_1m": 0.5707
+  }
+}
