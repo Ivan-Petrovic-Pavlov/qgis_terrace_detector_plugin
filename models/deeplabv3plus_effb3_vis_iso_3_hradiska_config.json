@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "name": "DeepLabV3+ EfficientNet-B3 VIS_ISO, site-specific / lokalitne váhy",
+  "checkpoint": "Hradisko_Sitno.pth",
+  "additional_checkpoints": [
+    "Hradisko_Sasovske_Podhradie.pth",
+    "Hradisko_Ladzany.pth"
+  ],
+  "site_checkpoints": {
+    "Hradisko_Sitno": "Hradisko_Sitno.pth",
+    "Hradisko_Sasovske_Podhradie": "Hradisko_Sasovske_Podhradie.pth",
+    "Hradisko_Ladzany": "Hradisko_Ladzany.pth"
+  },
+  "inference_script": "model_runner.py",
+  "model": {
+    "architecture": "DeepLabV3Plus",
+    "encoder": "efficientnet-b3"
+  },
+  "input": {
+    "type": "vis_iso",
+    "channels": 3,
+    "bands": [1, 2, 3],
+    "description": "VIS_ISO RGB hillshade raster, 25 cm/px / RGB raster VIS_ISO, 25 cm/px",
+    "preprocessing": "imagenet_rgb",
+    "preprocessing_options": {}
+  },
+  "inference": {
+    "threshold": 0.1,
+    "thresholds_by_site": {
+      "Hradisko_Sitno": 0.4,
+      "Hradisko_Sasovske_Podhradie": 0.05,
+      "Hradisko_Ladzany": 0.2
+    },
+    "patch_size": 256,
+    "stride": 128,
+    "batch_size": 8
+  },
+  "training": {
+    "model": "DeepLabV3Plus",
+    "encoder": "efficientnet-b3",
+    "loss": "bce_dice",
+    "mask_width_px": 5,
+    "epochs": 50,
+    "seed": 123,
+    "selection_metric": "LOOCV balanced accuracy per held-out site",
+    "checkpoint_source": "Bioinformatika2026/optimalizacia/behy/DeepLabV3Plus-efficientnet-b3-bce_dice-h5-iso-s123",
+    "held_out_site_training": {
+      "Hradisko_Sitno": ["Hradisko_Sasovske_Podhradie", "Hradisko_Ladzany"],
+      "Hradisko_Sasovske_Podhradie": ["Hradisko_Sitno", "Hradisko_Ladzany"],
+      "Hradisko_Ladzany": ["Hradisko_Sitno", "Hradisko_Sasovske_Podhradie"]
+    }
+  }
+}

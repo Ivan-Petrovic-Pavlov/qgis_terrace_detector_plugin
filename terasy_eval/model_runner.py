@@ -1,10 +1,27 @@
+import os
+
 import numpy as np
+
+
+def resolve_checkpoint_path(config, checkpoint_path):
+    site_checkpoints = config.get("site_checkpoints")
+    if site_checkpoints is None:
+        return checkpoint_path
+    selected_site = config.get("selected_site")
+    checkpoint_name = site_checkpoints.get(selected_site)
+    if checkpoint_name is None:
+        raise ValueError(
+            "Select a supported site before loading this model's site-specific checkpoint."
+        )
+    return os.path.join(os.path.dirname(checkpoint_path), checkpoint_name)
 
 
 def load_model(config, checkpoint_path, torch, segmentation_models, device):
     model_settings = config["model"]
     input_settings = config["input"]
     architecture = model_settings["architecture"]
+    checkpoint_path = resolve_checkpoint_path(config, checkpoint_path)
+
     if segmentation_models is None:
         raise ImportError("This model bundle requires segmentation_models_pytorch.")
     model_factory = getattr(segmentation_models, architecture, None)

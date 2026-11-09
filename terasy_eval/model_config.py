@@ -58,6 +58,31 @@ def validate_model_config(config):
     if len(set(checkpoint_names)) != len(checkpoint_names) or config["inference_script"] in checkpoint_names:
         raise ValueError("Názvy súborov v balíku sa nesmú opakovať / Bundle filenames must be unique.")
 
+    site_checkpoints = config.get("site_checkpoints")
+    if site_checkpoints is not None:
+        if (
+            not isinstance(site_checkpoints, dict)
+            or not site_checkpoints
+            or any(
+                not isinstance(site, str)
+                or not site.strip()
+                or checkpoint not in checkpoint_names
+                for site, checkpoint in site_checkpoints.items()
+            )
+        ):
+            raise ValueError("Neplatné váhy pre jednotlivé lokality / Invalid site-specific checkpoints.")
+
+    thresholds_by_site = inference.get("thresholds_by_site", {})
+    if not isinstance(thresholds_by_site, dict) or any(
+        site_checkpoints is None
+        or site not in site_checkpoints
+        or isinstance(threshold, bool)
+        or not isinstance(threshold, (int, float))
+        or not 0 <= threshold <= 1
+        for site, threshold in thresholds_by_site.items()
+    ):
+        raise ValueError("Neplatné prahy pre jednotlivé lokality / Invalid site-specific thresholds.")
+
     return config
 
 

@@ -3,7 +3,6 @@ import tempfile
 from datetime import datetime
 
 from qgis.core import (
-    QgsFeature,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterMultipleLayers,
@@ -20,6 +19,7 @@ from qgis.core import (
     QgsLineSymbol,
     QgsSingleSymbolRenderer,
     QgsUnitTypes,
+    QgsProcessingUtils,
 )
 from ..summary_table import write_gpkg_table
 from ..evaluation_loader import bundled_evaluator_path, load_evaluator
@@ -36,37 +36,29 @@ class TerasyEvalAlgorithm(QgsProcessingAlgorithm):
     VYSTUP = "VYSTUP"
     METRIC_LABELS = {
         "lokalita": "Lokalita / Site",
-        "tolerancia_m": "Tolerancia / Tolerance (m)",
+        "tolerancia_m": "Tolerancia / Matching tolerance (m)",
         "pocet_gt": "Počet referenčných terás / Reference terrace count",
-        "pocet_detekcii": "Počet nálezov / Detection count",
-        "TP": "Správne zistené terasy / Correctly detected terraces (TP)",
-        "FN": "Nenájdené terasy / Missed terraces (FN)",
-        "FP": "Falošné nálezy / False detections (FP)",
-        "spravne_detekcie": "Správne nálezy / Correct detections",
-        "precision": "Presnosť nálezov / Detection precision",
-        "recall": "Úplnosť záchytu / Recall",
-        "f1": "Súhrnná miera F1 / F1 score",
-        "prah": "Prah už aplikovaný na binárnu masku / Threshold already applied to binary mask",
-        "min_plocha_m2": "Minimálna plocha nálezu / Minimum detection area (m²)",
+        "pocet_oblasti_modelu": "Počet oblastí modelu / Model-detected areas",
+        "detekovane_terasy": "Detegované referenčné terasy / Detected reference terraces",
+        "TP": "Plne detegované terasy / Fully detected terraces (TP)",
+        "Partial": "Čiastočne detegované terasy / Partially detected terraces",
+        "FN": "Nedetegované terasy / Undetected terraces (FN)",
+        "FP": "Oblasti modelu bez referencie / Unmatched model areas (FP)",
+        "precision": "Presnosť plných detekcií / Strict precision",
+        "recall": "Úplnosť plnej detekcie / Strict recall",
+        "partial_recall": "Úplnosť vrátane čiastočných detekcií / Recall incl. partial",
+        "f1": "F1 – plné detekcie / F1 – full detections",
+        "prah": "Prah masky / Mask threshold",
+        "min_plocha_m2": "Minimálna plocha oblasti (m²) / Minimum model-area size (m²)",
+        "min_pokrytie": "Prah plnej detekcie / Full-detection coverage threshold",
+        "partial_min_pokrytie": "Dolný prah čiastočnej detekcie / Partial-detection lower threshold",
     }
     TABLE_FIELD_LABELS = {
         "model": "Model / Model",
         "raster": "Maska modelu / Model mask",
         "vystup": "Priestorové výstupy / Spatial outputs",
         "datum": "Čas vyhodnotenia / Evaluation time",
-        "lokalita": "Lokalita / Site",
-        "tolerancia_m": "Tolerancia porovnania (m) / Matching tolerance (m)",
-        "pocet_gt": "Počet ručne zakreslených terás / Manually mapped terrace count",
-        "pocet_detekcii": "Počet nálezov modelu / Model detection count",
-        "TP": "Správne zistené terasy / Correctly detected terraces (TP)",
-        "FN": "Nenájdené referenčné terasy / Missed reference terraces (FN)",
-        "FP": "Falošné nálezy modelu / False model detections (FP)",
-        "spravne_detekcie": "Správne nálezy / Correct detections",
-        "precision": "Presnosť nálezov / Detection precision",
-        "recall": "Úplnosť záchytu / Recall",
-        "f1": "Súhrnná miera F1 / F1 score",
-        "prah": "Prahovanie už aplikované pri tvorbe masky / Threshold applied when creating mask",
-        "min_plocha_m2": "Minimálna plocha nálezu (m²) / Minimum detection area (m²)",
+        **METRIC_LABELS,
     }
 
     def name(self):
@@ -77,17 +69,14 @@ class TerasyEvalAlgorithm(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return (
-            "SK: Vyberte jednu alebo viac masiek modelu a spoločnú vrstvu ručne zakreslených "
-            "terás. Každá maska sa vyhodnotí samostatne; vektor sa oreže na jej rozsah. "
-            "Pre každý model sa v QGIS vytvorí skupina: správne zistené terasy (TP), "
-            "nenájdené referenčné terasy (FN) a falošné nálezy modelu (FP). Porovnávacia "
-            "tabuľka obsahuje samostatný riadok a metriky pre každý model.\n\n"
-            "EN: Select one or more model masks and the shared manually mapped terrace "
-            "layer. Each mask is evaluated separately; the vector is clipped to its extent. "
-            "QGIS receives a group per model: correctly detected terraces (TP), missed "
-            "reference terraces (FN), and false model detections (FP). The comparison "
-            "table contains one metrics row per model. A custom Python evaluation script "
-            "can be selected; the bundled evaluator is the default."
+            "SK: Každá maska sa vyhodnotí samostatne. Referenčná terasa sa započíta najviac "
+            "raz aj vtedy, keď ju pokrýva viac oddelených oblastí modelu. Výstup rozlišuje "
+            "plne detegované (TP), čiastočne detegované (Partial), nedetegované (FN) "
+            "terasy a oblasti modelu bez referencie (FP).\n\n"
+            "EN: Each mask is evaluated independently. A reference terrace is counted at "
+            "most once, even when several disconnected model areas cover it. Outputs "
+            "distinguish fully detected (TP), partially detected (Partial), undetected "
+            "(FN) terraces and unmatched model areas (FP)."
         )
 
     def createInstance(self):
@@ -125,7 +114,7 @@ class TerasyEvalAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.POKRYTIE,
-                "Minimálna časť línie, ktorá musí byť nájdená / Minimum share of line that must be detected",
+                "Minimálne pokrytie línie pre plnú detekciu (> 1 %) / Minimum line coverage for full detection (> 1 %)",
                 type=QgsProcessingParameterNumber.Double,
                 defaultValue=0.5,
                 minValue=0.0,
@@ -191,6 +180,8 @@ class TerasyEvalAlgorithm(QgsProcessingAlgorithm):
             context
         )
         min_plocha = self.parameterAsDouble(parameters, self.MIN_PLOCHA, context)
+        if not (0.01 < pokrytie <= 1.0):
+            raise QgsProcessingException("Prah plnej detekcie musí byť > 0,01 a <= 1,0. / Full-detection threshold must be > 0.01 and <= 1.0.")
         evaluator_mode = self.parameterAsEnum(parameters, self.EVALUATOR_MODE, context)
         if evaluator_mode == 0:
             evaluator_path = self.default_evaluator_path()
@@ -348,10 +339,12 @@ class TerasyEvalAlgorithm(QgsProcessingAlgorithm):
         root = QgsProject.instance().layerTreeRoot()
         group = root.addGroup(f"Výsledky modelu / Model results: {model_name}")
         outputs = (
-            ("gt_terasy", "TP", "Referenčné terasy nájdené modelom (TP) / Reference terraces detected by model (TP)", "#2ca02c", True),
-            ("gt_terasy", "FN", "Referenčné terasy nenájdené modelom (FN) / Reference terraces missed by model (FN)", "#1f77b4", True),
-            ("detekcie", "TP", "Správne nálezy modelu (TP) / Correct model detections (TP)", "#2ca02c", False),
-            ("detekcie", "FP", "Falošné nálezy modelu (FP) / False model detections (FP)", "#d62728", False),
+            ("gt_terasy", "TP", "Plne detegované referenčné terasy (TP) / Fully detected reference terraces", "#2ca02c", True),
+            ("gt_terasy", "Partial", "Čiastočne detegované referenčné terasy / Partially detected reference terraces", "#ffbf00", True),
+            ("gt_terasy", "FN", "Nedetegované referenčné terasy (FN) / Undetected reference terraces", "#1f77b4", True),
+            ("detekcie", "TP", "Detegované oblasti modelu – plné (TP) / Model-detected areas – full", "#2ca02c", False),
+            ("detekcie", "Partial", "Detegované oblasti modelu – čiastočné / Model-detected areas – partial", "#ffbf00", False),
+            ("detekcie", "FP", "Oblasti modelu bez referencie (FP) / Unmatched model areas", "#d62728", False),
         )
         for table_name, status, display_name, color, is_line in outputs:
             layer = QgsVectorLayer(f"{gpkg}|layername={table_name}", display_name, "ogr")

@@ -5,7 +5,7 @@ import zipfile
 from pathlib import Path
 
 from terasy_eval.model_config import read_model_bundle, validate_model_config
-from terasy_eval.model_runner import preprocess_patch
+from terasy_eval.model_runner import preprocess_patch, resolve_checkpoint_path
 
 
 class ModelConfigTests(unittest.TestCase):
@@ -58,6 +58,51 @@ class ModelConfigTests(unittest.TestCase):
                 bundle.writestr("model.pth", b"test weights")
                 bundle.writestr("model_runner.py", "def load_model(*args): pass\n")
             self.assertEqual(read_model_bundle(bundle_path)["model"]["architecture"], "FPN")
+
+    def test_accepts_site_specific_checkpoints_and_thresholds(self):
+        self.config["checkpoint"] = "sitno.pth"
+        self.config["additional_checkpoints"] = ["sasovske.pth", "ladzany.pth"]
+        self.config["site_checkpoints"] = {
+            "Hradisko_Sitno": "sitno.pth",
+            "Hradisko_Sasovske_Podhradie": "sasovske.pth",
+            "Hradisko_Ladzany": "ladzany.pth",
+        }
+        self.config["inference"]["thresholds_by_site"] = {
+            "Hradisko_Sitno": 0.4,
+            "Hradisko_Sasovske_Podhradie": 0.05,
+            "Hradisko_Ladzany": 0.2,
+        }
+        self.assertEqual(
+            validate_model_config(self.config)["site_checkpoints"]["Hradisko_Ladzany"],
+            "ladzany.pth",
+        )
+
+    def test_rejects_site_checkpoint_not_in_bundle(self):
+        self.config["site_checkpoints"] = {"Hradisko_Sitno": "missing.pth"}
+        with self.assertRaises(ValueError):
+            validate_model_config(self.config)
+
+    def test_rejects_threshold_for_unknown_site(self):
+        self.config["site_checkpoints"] = {"Hradisko_Sitno": "model.pth"}
+        self.config["inference"]["thresholds_by_site"] = {"Hradisko_Ladzany": 0.2}
+        with self.assertRaises(ValueError):
+            validate_model_config(self.config)
+
+    def test_runner_resolves_the_selected_site_checkpoint(self):
+        config = {
+            "site_checkpoints": {
+                "Hradisko_Sitno": "sitno.pth",
+                "Hradisko_Ladzany": "ladzany.pth",
+            },
+            "selected_site": "Hradisko_Ladzany",
+        }
+        checkpoint = resolve_checkpoint_path(config, "/tmp/model/sitno.pth")
+        self.assertEqual(checkpoint, "/tmp/model/ladzany.pth")
+
+    def test_runner_requires_a_site_for_site_specific_weights(self):
+        config = {"site_checkpoints": {"Hradisko_Sitno": "sitno.pth"}}
+        with self.assertRaises(ValueError):
+            resolve_checkpoint_path(config, "/tmp/model/sitno.pth")
 
 
 if __name__ == "__main__":

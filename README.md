@@ -17,6 +17,10 @@ Ukážkový modelový ZIP pre jednopásmový DEM je v [`examples/models/fpn_resn
 
 An example model ZIP for one-band DEM input is included. Its default threshold is 0.2. A sample Tribeč output is also available.
 
+Balík [`models/deeplabv3plus_effb3_vis_iso_3_hradiska.zip`](models/deeplabv3plus_effb3_vis_iso_3_hradiska.zip) obsahuje samostatné LOOCV váhy pre Sitno, Šášovské Podhradie a Ladzany. Pri inferencii vyberte hradisko; balík načíta jeho checkpoint a predvolený validačný prah. Vstupom musí byť trojpásmový RGB raster VIS_ISO.
+
+The site-specific VIS_ISO bundle contains a separate leave-one-site-out checkpoint for each hillfort. Select the hillfort during inference to load its checkpoint and validation threshold. The input must be a three-band VIS_ISO RGB raster.
+
 ## Dokumentácia / Documentation
 
 - [Inštalácia pre používateľa / User installation guide](INSTALACIA.md): inštalácia v Linuxe a Windows, zapnutie pluginu a bežný postup v QGIS.

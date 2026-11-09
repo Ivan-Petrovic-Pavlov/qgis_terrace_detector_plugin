@@ -74,10 +74,14 @@ Začnite súborom [`examples/models/fpn_resnet34_dem_config.json`](examples/mode
 - `input.preprocessing`: názov stratégie implementovanej runnerom.
 - `input.preprocessing_options`: voľby konkrétneho predspracovania.
 - `inference.threshold`: predvolený prah v rozsahu 0 až 1; používateľ ho môže v QGIS zmeniť.
+- `inference.thresholds_by_site`: voliteľné predvolené prahy podľa lokality; vyžaduje `site_checkpoints`.
 - `inference.patch_size`, `stride`, `batch_size`: veľkosť výrezov, krok a počet výrezov v dávke.
+- `site_checkpoints`: voliteľná mapa názvov lokalít na názvy checkpointov v ZIP-e. Ak je vyplnená, QGIS vyžaduje výber hradiska a sprístupní ho runneru ako `config["selected_site"]`.
 - `training`: voliteľné údaje o tréningu, lokalitách a výbere modelu.
 
 The config is validated before inference. The selected raster must have at least the declared number of bands, and every band index must exist. `stride` cannot exceed `patch_size`.
+
+Pri balíku s `site_checkpoints` sa v inferenčnom nástroji zobrazí výber hradiska. Runner podľa `config["selected_site"]` načíta príslušný checkpoint. Voliteľné `inference.thresholds_by_site` určuje predvolený prah danej lokality; používateľ ho stále môže prepísať parametrom prahu. / Bundles with `site_checkpoints` expose a hillfort selector in the inference tool. The runner loads the matching checkpoint using `config["selected_site"]`. Optional `inference.thresholds_by_site` sets the site's default threshold, which can still be overridden.
 
 ### Rozhranie runnera / Runner interface
 

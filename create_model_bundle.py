@@ -33,6 +33,23 @@ def create_bundle(checkpoint_path, config_path, output_path, runner_path=None, a
         checkpoint_paths[filename] = assets[filename]
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    readme = (
+        "Model bundle for the QGIS plugin Detekcia teras / Terrace detection.\n"
+        "Balik modelu pre QGIS plugin Detekcia teras / Terrace detection.\n"
+        "Select this ZIP in the inference tool. The input raster is selected from QGIS.\n"
+        "Vyberte tento ZIP v nastroji inferencie. Vstupny raster vyberiete z QGIS.\n"
+        "PyTorch and model libraries must be available in the QGIS Python.\n"
+        "PyTorch a kniznica modelu musia byt dostupne v Pythone QGIS.\n"
+    )
+    if config.get("site_checkpoints"):
+        readme += (
+            "Select the hillfort in the inference tool to load its checkpoint.\n"
+            "The input must be a three-band VIS_ISO RGB raster.\n"
+            "Kazde hradisko pouziva samostatne LOOCV vahy; vstupom je RGB raster VIS_ISO.\n"
+            "Available hillforts / Dostupne hradiska:\n"
+        )
+        readme += "".join(f"- {site}\n" for site in config["site_checkpoints"])
+
     descriptor, temporary_path = tempfile.mkstemp(suffix=".zip", dir=output_path.parent)
     os.close(descriptor)
     try:
@@ -49,15 +66,7 @@ def create_bundle(checkpoint_path, config_path, output_path, runner_path=None, a
                         target.write(block)
 
             bundle.write(runner_path, config["inference_script"])
-            bundle.writestr(
-                "README.txt",
-                "Model bundle for the QGIS plugin Detekcia teras / Terrace detection.\n"
-                "Balik modelu pre QGIS plugin Detekcia teras / Terrace detection.\n"
-                "Select this ZIP in the inference tool. The input raster is selected from QGIS.\n"
-                "Vyberte tento ZIP v nastroji inferencie. Vstupny raster vyberiete z QGIS.\n"
-                "PyTorch and model libraries must be available in the QGIS Python.\n"
-                "PyTorch a kniznica modelu musia byt dostupne v Pythone QGIS.\n",
-            )
+            bundle.writestr("README.txt", readme)
         os.replace(temporary_path, output_path)
         os.chmod(output_path, 0o644)
     finally:
